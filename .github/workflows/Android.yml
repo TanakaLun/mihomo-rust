@@ -38,8 +38,12 @@ jobs:
         run: |
           TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
           TARGET_CC=$TOOLCHAIN/bin/aarch64-linux-android${{ env.ANDROID_API }}-clang
+          TARGET_AR=$TOOLCHAIN/bin/llvm-ar
+          
           export CC_aarch64_linux_android=$TARGET_CC
+          export AR_aarch64_linux_android=$TARGET_AR
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$TARGET_CC
+          
           export RUSTFLAGS="-C link-arg=-z -C link-arg=max-page-size=16384"
           
           cargo build --release --locked \
