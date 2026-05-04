@@ -17,11 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NDK_VERSION: r29-beta1
+      ANDROID_API: 35
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Rust toolchain
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android
@@ -33,35 +34,18 @@ jobs:
           unzip -q ndk.zip -d $ANDROID_HOME/ndk
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/android-ndk-${{ env.NDK_VERSION }}" >> $GITHUB_ENV
 
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: android-arm64-full-api35-v2
-
-      - name: Setup Zig
-        uses: mlugg/setup-zig@v1
-        with:
-          version: 0.13.0
-
-      - name: Install cargo-zigbuild
-        run: cargo install --locked cargo-zigbuild
-
-      - name: Build Full Release Binary
+      - name: Build Full Binary
         run: |
           TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
-          TARGET=aarch64-linux-android
-          API=35
-          
-          export CC="zig cc -target $TARGET$API --sysroot $TOOLCHAIN/sysroot"
-          export AR="zig ar"
-          
+          TARGET_CC=$TOOLCHAIN/bin/aarch64-linux-android${{ env.ANDROID_API }}-clang
+          export CC_aarch64_linux_android=$TARGET_CC
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$TARGET_CC
           export RUSTFLAGS="-C link-arg=-z -C link-arg=max-page-size=16384"
           
-          cargo zigbuild --release --locked \
-            --target $TARGET \
+          cargo build --release --locked \
+            --target aarch64-linux-android \
             --features full \
             --bin mihomo
-
 
       - name: Post-Build Strip
         run: |
@@ -73,24 +57,21 @@ jobs:
         run: |
           set -euo pipefail
           ref="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
-          name="mihomo-${ref}-android-arm64-full-api35"
+          name="mihomo-${ref}-android-arm64-full-16kb"
           staging="dist/${name}"
-          
           mkdir -p "${staging}"
           cp "target/aarch64-linux-android/release/mihomo" "${staging}/"
           cp README.md LICENSE "${staging}/" 2>/dev/null || true
-          
           cd dist
           tar -czf "${name}.tar.gz" "${name}"
           sha256sum "${name}.tar.gz" > "${name}.tar.gz.sha256"
-          
           echo "archive=${name}.tar.gz" >> "$GITHUB_OUTPUT"
           echo "checksum=${name}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mihomo-android-full-api35
+          name: mihomo-android-full
           path: |
             dist/${{ steps.pkg.outputs.archive }}
             dist/${{ steps.pkg.outputs.checksum }}
