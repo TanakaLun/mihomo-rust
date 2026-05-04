@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NDK_VERSION: r29-beta1
+      ANDROID_API: 35
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -38,7 +39,7 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
-          key: android-arm64-full
+          key: android-arm64-full-api35-v2
 
       - name: Setup Zig
         uses: mlugg/setup-zig@v1
@@ -53,7 +54,7 @@ jobs:
           export RUSTFLAGS="-C link-arg=-z -C link-arg=max-page-size=16384"
           
           cargo zigbuild --release --locked \
-            --target aarch64-linux-android \
+            --target aarch64-linux-android.${{ env.ANDROID_API }} \
             --features full \
             --bin mihomo
 
@@ -67,14 +68,15 @@ jobs:
         run: |
           set -euo pipefail
           ref="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
-          name="mihomo-${ref}-android-arm64-full-16kb"
+          name="mihomo-${ref}-android-arm64-full-api35"
           staging="dist/${name}"
           
           mkdir -p "${staging}"
           cp "target/aarch64-linux-android/release/mihomo" "${staging}/"
           cp README.md LICENSE "${staging}/" 2>/dev/null || true
           
-          tar -C dist -czf "${name}.tar.gz" "${name}"
+          cd dist
+          tar -czf "${name}.tar.gz" "${name}"
           sha256sum "${name}.tar.gz" > "${name}.tar.gz.sha256"
           
           echo "archive=${name}.tar.gz" >> "$GITHUB_OUTPUT"
@@ -83,7 +85,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mihomo-android-full
+          name: mihomo-android-full-api35
           path: |
             dist/${{ steps.pkg.outputs.archive }}
             dist/${{ steps.pkg.outputs.checksum }}
