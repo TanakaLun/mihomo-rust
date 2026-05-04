@@ -54,7 +54,7 @@ jobs:
           export RUSTFLAGS="-C link-arg=-z -C link-arg=max-page-size=16384"
           
           cargo zigbuild --release --locked \
-            --target aarch64-linux-android.${{ env.ANDROID_API }} \
+            --target aarch64-linux-android35 \
             --features full \
             --bin mihomo
 
