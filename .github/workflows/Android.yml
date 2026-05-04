@@ -2,8 +2,6 @@ name: Android Arm64 Full Build
 
 on:
   push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
       tag:
@@ -52,9 +50,10 @@ jobs:
       - name: Build Full Release Binary
         run: |
           export RUSTFLAGS="-C link-arg=-z -C link-arg=max-page-size=16384"
+          export ZIG_TARGET_ABI_VERSION=35
           
           cargo zigbuild --release --locked \
-            --target aarch64-linux-android35 \
+            --target aarch64-linux-android \
             --features full \
             --bin mihomo
 
