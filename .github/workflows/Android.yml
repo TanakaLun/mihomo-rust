@@ -34,6 +34,28 @@ jobs:
           unzip -q ndk.zip -d $ANDROID_HOME/ndk
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/android-ndk-${{ env.NDK_VERSION }}" >> $GITHUB_ENV
 
+      - name: Patch Android Compatibility
+        run: |
+          FILE="crates/mihomo-app/src/main.rs"
+          
+          echo "" >> $FILE
+          echo '#[cfg(target_os = "android")]' >> $FILE
+          echo 'fn install_service(_: Option<&str>, _: &Args) -> Result<()> { ' >> $FILE
+          echo '    anyhow::bail!("Service management is not supported on Android natively."); ' >> $FILE
+          echo '}' >> $FILE
+          
+          echo '#[cfg(target_os = "android")]' >> $FILE
+          echo 'fn uninstall_service() -> Result<()> { ' >> $FILE
+          echo '    anyhow::bail!("Service management is not supported on Android natively."); ' >> $FILE
+          echo '}' >> $FILE
+          
+          echo '#[cfg(target_os = "android")]' >> $FILE
+          echo 'fn service_status() -> Result<()> { ' >> $FILE
+          echo '    anyhow::bail!("Service management is not supported on Android natively."); ' >> $FILE
+          echo '}' >> $FILE
+          
+          echo "Successfully patched $FILE for Android target."
+
       - name: Build Full Binary
         run: |
           TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
@@ -44,7 +66,7 @@ jobs:
           export AR_aarch64_linux_android=$TARGET_AR
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$TARGET_CC
           
-          export RUSTFLAGS='--cfg target_os="linux" -C link-arg=-z -C link-arg=max-page-size=16384'
+          export RUSTFLAGS="-C link-arg=-z -C link-arg=max-page-size=16384"
           
           cargo build --release --locked \
             --target aarch64-linux-android \
@@ -61,14 +83,17 @@ jobs:
         run: |
           set -euo pipefail
           ref="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
-          name="mihomo-${ref}-android-arm64-full-16kb"
+          name="mihomo-${ref}-android-arm64-full-api35"
           staging="dist/${name}"
+          
           mkdir -p "${staging}"
           cp "target/aarch64-linux-android/release/mihomo" "${staging}/"
           cp README.md LICENSE "${staging}/" 2>/dev/null || true
+          
           cd dist
           tar -czf "${name}.tar.gz" "${name}"
           sha256sum "${name}.tar.gz" > "${name}.tar.gz.sha256"
+          
           echo "archive=${name}.tar.gz" >> "$GITHUB_OUTPUT"
           echo "checksum=${name}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
 
