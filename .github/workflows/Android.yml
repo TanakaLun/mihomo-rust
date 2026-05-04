@@ -44,7 +44,7 @@ jobs:
           export AR_aarch64_linux_android=$TARGET_AR
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$TARGET_CC
           
-          export RUSTFLAGS="-C link-arg=-z -C link-arg=max-page-size=16384"
+          export RUSTFLAGS='--cfg target_os="linux" -C link-arg=-z -C link-arg=max-page-size=16384'
           
           cargo build --release --locked \
             --target aarch64-linux-android \
