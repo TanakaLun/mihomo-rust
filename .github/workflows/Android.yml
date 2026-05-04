@@ -17,7 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NDK_VERSION: r29-beta1
-      ANDROID_API: 35
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -49,13 +48,20 @@ jobs:
 
       - name: Build Full Release Binary
         run: |
+          TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
+          TARGET=aarch64-linux-android
+          API=35
+          
+          export CC="zig cc -target $TARGET$API --sysroot $TOOLCHAIN/sysroot"
+          export AR="zig ar"
+          
           export RUSTFLAGS="-C link-arg=-z -C link-arg=max-page-size=16384"
-          export ZIG_TARGET_ABI_VERSION=35
           
           cargo zigbuild --release --locked \
-            --target aarch64-linux-android \
+            --target $TARGET \
             --features full \
             --bin mihomo
+
 
       - name: Post-Build Strip
         run: |
