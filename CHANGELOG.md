@@ -26,6 +26,29 @@ the canonical, in-repo source a release is cut from.
   no mihomo equivalent. UDP chains and the relay-based fallback wrapper
   (`anytls`, `hysteria2`, `ss` with an external plugin) are not covered.
 
+### Fixed
+
+- **Another resolver's fake IP dials the sniffed name**: when a phone on a
+  LAN with a Surge (or Clash) gateway resolves a name while the VPN is down,
+  the app caches the gateway's fake IP from 198.18.0.0/15. Once the VPN is
+  back the flow reaches the tunnel with that literal and no name, matches
+  by IP and goes to a proxy, which cannot reach the range, so the
+  connection hangs until the app re-resolves. Such a destination, outside
+  the tunnel's own fake-IP range and with no snooped name, now dials the
+  name the sniffer saw, as a stale address in the own range already did,
+  and the connection notes say so. The literal is dropped whatever
+  `override-destination` says, including on the tproxy listener, so IP
+  rules and DIRECT use the name's real address; real addresses keep their
+  literal.
+- **`handle_tcp` sniffs flows it cannot name**: inbounds that hand the
+  tunnel a raw netstack stream (the TUN listener, the Android client's
+  tun2socks) had no sniffer, so an unmapped address in the own fake-IP
+  range was dropped and another resolver's fake IP black-holed. For those
+  flows only, `handle_tcp` now reads the client's first bytes for up to
+  200 ms, takes the TLS SNI or HTTP `Host` as the sniffed name, and relays
+  the bytes upstream first. Every other flow is relayed unread, and
+  callers need no change.
+
 ## [0.24.0] - 2026-10-18
 
 ### Added
