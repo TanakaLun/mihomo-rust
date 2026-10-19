@@ -36,7 +36,7 @@ impl FallbackGroup {
             health: ProxyHealth::new(),
             usage: UsageTracker::new(),
             dial_failures: DialFailureTracker::new(),
-            chain_health: Arc::default(),
+            chain_health: Arc::new(ChainHealth::tracking_carriers()),
         }
     }
 
@@ -56,7 +56,7 @@ impl FallbackGroup {
             health: ProxyHealth::new(),
             usage: UsageTracker::new(),
             dial_failures: DialFailureTracker::new(),
-            chain_health: Arc::default(),
+            chain_health: Arc::new(ChainHealth::tracking_carriers()),
         }
     }
 
@@ -134,7 +134,12 @@ impl FallbackGroup {
     }
 
     /// [`Self::first_alive`], or for a `dialer-proxy` front hop the first
-    /// alive member not blocked for its target.
+    /// alive member not blocked for its target. The group's order holds for
+    /// front hops too, so no carrier is passed: a front hop returns to an
+    /// earlier member once it is no longer blocked, and the health check's
+    /// chain probes keep a member that still fails blocked. The carrier the
+    /// table tracks names the member whose failures count against the
+    /// chained outbound (see `front_hop_failed`).
     fn pick_for(
         &self,
         metadata: &Metadata,
@@ -149,6 +154,7 @@ impl FallbackGroup {
             &self.chain_health,
             &target,
             pick,
+            None,
             || self.member_proxy_list(),
             |p| p.alive(),
             dial,
@@ -209,7 +215,7 @@ impl ProxyAdapter for FallbackGroup {
             .pick_for(metadata, true)
             .ok_or_else(|| MeowError::Proxy("no proxy available".into()))?;
         let attempt = super::DialAttempt::new(&self.name, &self.dial_failures, &proxy);
-        let conn = attempt.finish(proxy.dial_tcp(metadata).await)?;
+        let conn = attempt.run(proxy.dial_tcp(metadata)).await?;
         Ok(match front_hop {
             Some(target) => {
                 super::watch_front_hop(conn, &self.name, &self.chain_health, target, &proxy)
@@ -224,7 +230,7 @@ impl ProxyAdapter for FallbackGroup {
             .first_alive()
             .ok_or_else(|| MeowError::Proxy("no proxy available".into()))?;
         let attempt = super::DialAttempt::new(&self.name, &self.dial_failures, &proxy);
-        attempt.finish(proxy.dial_udp(metadata).await)
+        attempt.run(proxy.dial_udp(metadata)).await
     }
 
     fn unwrap_proxy(&self, metadata: &Metadata, touch: bool) -> Option<Arc<dyn Proxy>> {
