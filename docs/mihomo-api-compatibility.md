@@ -22,9 +22,9 @@ Status meanings:
 | `DELETE /proxies/{name}` | Compatible | Unfixes URLTest/Fallback; Selector and leaf adapters return 400. |
 | `GET /proxies/{name}/delay` | Compatible | Implements mihomo delay/error semantics. |
 | `GET /group[/{name}]` | Compatible | Lists and returns groups only. |
-| `GET /group/{name}/delay` | Compatible | Unfixes automatic groups before the batch probe. |
+| `GET /group/{name}/delay` | Compatible | Unfixes automatic groups before the batch probe; maps each member that passed within `timeout` to its delay, leaving out the rest, and is 504 only when none passed. |
 | `GET /traffic` | Compatible | HTTP newline-delimited JSON and WebSocket, including current and total counters. |
-| `GET /connections` | Partial | HTTP snapshot and WebSocket interval mode are implemented; UDP sessions are not tracked. |
+| `GET /connections` | Partial | HTTP snapshot and WebSocket interval mode are implemented; `metadata.dscp` is always a number (`0` when the inbound saw none); UDP sessions are not tracked. |
 | `DELETE /connections[/{id}]` | Compatible | Closes one or all tracked connections. |
 | `GET /logs` | Compatible | HTTP/WebSocket and plain/structured formats are supported. |
 | `GET /memory` | Compatible | HTTP/WebSocket; each client starts with the mihomo-compatible zero frame. |
@@ -33,7 +33,7 @@ Status meanings:
 | `GET/PUT /providers/proxies[/{name}]` | Compatible | Refresh failures return 503. HTTP providers report `subscriptionInfo` from the `subscription-userinfo` response header. |
 | `GET /providers/proxies/{name}/healthcheck` | Compatible | Uses provider health-check configuration and returns 204. |
 | `GET /providers/proxies/{provider}/{proxy}[/healthcheck]` | Compatible | Provider member detail and delay probe; members carry `provider-name`. |
-| `GET/PUT /providers/rules[/{name}]` | Compatible | Includes format, vehicle type, rule count, and RFC 3339 update time. |
+| `GET/PUT /providers/rules[/{name}]` | Compatible | Includes format (`YamlRule`, `TextRule` or `MrsRule`: what the payload parsed as), vehicle type, rule count, and RFC 3339 update time. |
 | `GET/PATCH /configs` | Partial | Mode, log level and `tun` are mutable. A `tun` patch is merged over the current section and the TUN listener is started, stopped or restarted from the result, matching mihomo, with two differences: an omitted `enable` keeps the current state instead of turning TUN off, and a TUN that fails to start answers 500 instead of 204. Only the `tun` keys meow implements apply; the rest are ignored. `GET` reports `tun` with `enable` as the running state. Ports, `allow-lan`, `bind-address`, `ipv6`, `sniffing`, `tcp-concurrent`, `find-process-mode`, `interface-name`, TUIC and the other dynamic listeners are unavailable. |
 | `PUT /configs` | Partial | Reloads proxies/rules/mode while retaining providers and selection persistence; the DNS runtime is republished on input changes and the TUN listener restarts on `tun:` diffs, but ordinary listener hot replacement is unavailable. |
 | `POST /cache/dns/flush` | Compatible | Clears resolver cache. |
